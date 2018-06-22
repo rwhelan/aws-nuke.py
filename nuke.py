@@ -31,13 +31,14 @@ enabled_modules = [i() for i in BaseNuker.__subclasses__() if i.enabled]
 sorted_modules = dependency_sort(enabled_modules)
 
 
+### Setup and Parse command line options
 def unknown_op(_):
     print(f"Unknown operation: {sys.argv[1]}", file = sys.stderr)
     sys.exit(1)
 
 def list_resources(modules):
     for module in modules:
-        print(module.name)
+        print(f"============ {module.name} ============")
         for i in module.list_resources():
             print (f"    {i}")
         print()
@@ -53,5 +54,7 @@ ops = {
 
 op = ops.get(sys.argv[1], ops['_unknown'])
 
+
+### Go!
 op(sorted_modules)
 
