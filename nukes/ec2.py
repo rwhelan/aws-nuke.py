@@ -19,7 +19,7 @@ def get_instance_name(instance):
 class Instances(BaseNuker):
     def __init__(self):
         super(Instances, self).__init__()
-        self.name = 'Instances'
+        self.name = 'instances'
 
     def list_resources(self):
         _reservations = ec2_client.describe_instances()['Reservations']
@@ -29,8 +29,8 @@ class Instances(BaseNuker):
 class SecurityGroups(BaseNuker):
     def __init__(self):
         super(SecurityGroups, self).__init__()
-        self.name = 'SecurityGroups'
-        self.dependencies = ['Instances']
+        self.name = 'securitygroups'
+        self.dependencies = ['instances']
 
     def list_resources(self):
         _security_groups = ec2_client.describe_security_groups()['SecurityGroups']
@@ -77,6 +77,63 @@ class SnapShots(BaseNuker):
         return [snap['SnapshotId'] for snap in _snapshots]
 
     
+class EIPs(BaseNuker):
+    def __init__(self):
+        super(EIPs, self).__init__()
+        self.name = 'eips'
+        self.dependencies = ['instances']
+
+    def list_resources(self):
+        _addresses = ec2_client.describe_addresses()['Addresses']
+        return [addr['PublicIp'] for addr in _addresses]
 
 
+class CustomerGateways(BaseNuker):
+    def __init__(self):
+        super(CustomerGateways, self).__init__()
+        self.name = 'customergateways'
+        self.dependencies = ['vpngateways']
 
+    def list_resources(self):
+        _cgws = ec2_client.describe_customer_gateways()['CustomerGateways']
+        return [cgw['CustomerGatewayId'] for cgw in _cgws]
+
+
+class DHCPOptions(BaseNuker):
+    def __init__(self):
+        super(DHCPOptions, self).__init__()
+        self.name = 'dhcpoptions'
+
+    def list_resources(self):
+        _dhcpoptions = ec2_client.describe_dhcp_options()['DhcpOptions']
+        return [ops['DhcpOptionsId'] for ops in _dhcpoptions]
+
+
+class KeyPairs(BaseNuker):
+    def __init__(self):
+        super(KeyPairs, self).__init__()
+        self.name = 'keypairs'
+
+    def list_resources(self):
+        _keypairs = ec2_client.describe_key_pairs()['KeyPairs']
+        return [keypair['KeyName'] for keypair in _keypairs]
+
+
+class NatGateways(BaseNuker):
+    def __init__(self):
+        super(NatGateways, self).__init__()
+        self.name = 'natgateways'
+
+    def list_resources(self):
+        _ngws = ec2_client.describe_nat_gateways()['NatGateways']
+        return [ngw['NatGatewayId'] for ngw in _ngws]
+
+
+class RouteTables(BaseNuker):
+    def __init__(self):
+        super(RouteTables, self).__init__()
+        self.name = 'routetables'
+
+    def list_resources(self):
+        _rtbls = ec2_client.describe_route_tables()['RouteTables']
+        return [rt['RouteTableId'] for rt in _rtbls]
