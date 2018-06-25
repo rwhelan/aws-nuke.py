@@ -8,3 +8,6 @@ class BaseNuker:
 
     def nuke(self):
         raise NotImplementedError
+
+    def list_resources(self):
+        return [f"<<< list for {self.name} not implemented >>>"]
