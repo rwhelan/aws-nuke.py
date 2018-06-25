@@ -6,6 +6,7 @@ from nukes import BaseNuker
 s3_client = boto3.client('s3')
 
 class S3(BaseNuker):
+    global_service = True
     def __init__(self):
         super(S3, self).__init__()
         self.name = 's3'

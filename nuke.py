@@ -6,9 +6,12 @@ import os
 
 from lib import dependency_sort
 
-if len(sys.argv) != 2:
+if len(sys.argv) <= 1:
     print("No operation given", file = sys.stderr)
     sys.exit(1)
+
+
+global_services = True if (len(sys.argv) == 3) and (sys.argv[2] == 'global') else False
 
 
 ### Import all the nukers
@@ -27,7 +30,11 @@ for module_file in os.listdir(module_path):
     __import__("nukes."+module_name)
 
 
-enabled_modules = [i() for i in BaseNuker.__subclasses__() if i.enabled]
+if global_services:
+    enabled_modules = [i() for i in BaseNuker.__subclasses__() if i.enabled]
+else:
+    enabled_modules = [i() for i in BaseNuker.__subclasses__() if i.enabled and i.global_service == False]
+
 sorted_modules = dependency_sort(enabled_modules)
 
 
@@ -54,7 +61,7 @@ ops = {
 
 op = ops.get(sys.argv[1], ops['_unknown'])
 
-
 ### Go!
 op(sorted_modules)
 
+print(global_services)

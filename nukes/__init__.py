@@ -2,6 +2,7 @@
 
 class BaseNuker:
     enabled = True
+    global_service = False
     def __init__(self):
         self.dependencies = []
         self.name = ''
