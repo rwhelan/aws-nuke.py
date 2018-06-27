@@ -64,7 +64,7 @@ class AMIs(BaseNuker):
         super(AMIs, self).__init__()
         self.name = 'amis'
 
-    def list_resources(self):
+    def list_resources(self, ids_only = False):
         _images = ec2_client.describe_images(
             Filters = [
                 {
@@ -75,7 +75,20 @@ class AMIs(BaseNuker):
                 }
             ]
         )['Images']
-        return [img['Name'] for img in _images]
+
+        if not ids_only:
+            return [img['Name'] for img in _images]
+
+        return [img['ImageId'] for img in _images]
+
+    def nuke_resources(self):
+        for image in self.list_resources(ids_only=True):
+            ec2_client.deregister_image(
+                ImageId=image
+            )
+
+
+
 
 
 class SnapShots(BaseNuker):
@@ -95,7 +108,14 @@ class SnapShots(BaseNuker):
                 }
             ]
         )['Snapshots']
+
         return [snap['SnapshotId'] for snap in _snapshots]
+
+    def nuke_resources(self):
+        for snapshot in self.list_resources():
+            ec2_client.delete_snapshot(
+                SnapshotId=snapshot
+            )
 
     
 class EIPs(BaseNuker):
@@ -104,9 +124,19 @@ class EIPs(BaseNuker):
         self.name = 'eips'
         self.dependencies = ['instances']
 
-    def list_resources(self):
+    def list_resources(self, ids_only = False):
         _addresses = ec2_client.describe_addresses()['Addresses']
-        return [addr['PublicIp'] for addr in _addresses]
+        if not ids_only:
+            return [addr['PublicIp'] for addr in _addresses]
+
+        return [addr['AllocationId'] for addr in _addresses]
+
+    def nuke_resources(self):
+        for addr in self.list_resources(ids_only=True):
+            ec2_client.release_address(
+                AllocationId=addr
+            )
+
 
 
 class VpnGateways(BaseNuker):
@@ -117,6 +147,12 @@ class VpnGateways(BaseNuker):
     def list_resources(self):
         _vgws = ec2_client.describe_vpn_gateways()['VpnGateways']
         return [vgw['VpnGatewayId'] for vgw in _vgws]
+
+    def nuke_resources(self):
+        for vgw in self.list_resources():
+            ec2_client.delete_vpn_gateway(
+                VpnGatewayId=vgw
+            )
 
 
 class CustomerGateways(BaseNuker):
@@ -129,6 +165,12 @@ class CustomerGateways(BaseNuker):
         _cgws = ec2_client.describe_customer_gateways()['CustomerGateways']
         return [cgw['CustomerGatewayId'] for cgw in _cgws]
 
+    def nuke_resources(self):
+        for cgw in self.list_resources():
+            ec2_client.delete_customer_gateway(
+                CustomerGatewayId=cgw
+            )
+
 
 class DHCPOptions(BaseNuker):
     def __init__(self):
@@ -138,6 +180,12 @@ class DHCPOptions(BaseNuker):
     def list_resources(self):
         _dhcpoptions = ec2_client.describe_dhcp_options()['DhcpOptions']
         return [ops['DhcpOptionsId'] for ops in _dhcpoptions]
+
+    def nuke_resources(self):
+        for dhcpops in self.list_resources():
+            ec2_client.delete_dhcp_options(
+                DhcpOptionsId=dhcpops
+            )
 
 
 class KeyPairs(BaseNuker):
@@ -149,6 +197,12 @@ class KeyPairs(BaseNuker):
         _keypairs = ec2_client.describe_key_pairs()['KeyPairs']
         return [keypair['KeyName'] for keypair in _keypairs]
 
+    def nuke_resources(self):
+        for keypair in self.list_resources():
+            ec2_client.delete_key_pair(
+                KeyName=keypair
+            )
+
 
 class NatGateways(BaseNuker):
     def __init__(self):
@@ -159,6 +213,12 @@ class NatGateways(BaseNuker):
         _ngws = ec2_client.describe_nat_gateways()['NatGateways']
         return [ngw['NatGatewayId'] for ngw in _ngws]
 
+    def nuke_resources(self):
+        for ngw in self.list_resources():
+            ec2_client.delete_nat_gateway(
+                NatGatewayId=ngw
+            )
+
 
 class RouteTables(BaseNuker):
     def __init__(self):
@@ -168,6 +228,12 @@ class RouteTables(BaseNuker):
     def list_resources(self):
         _rtbls = ec2_client.describe_route_tables()['RouteTables']
         return [rt['RouteTableId'] for rt in _rtbls]
+
+    def nuke_resources(self):
+        for rt in self.list_resources():
+            ec2_client.delete_route_table(
+                RouteTableId=rt
+            )
 
 
 class Subnets(BaseNuker):
@@ -185,6 +251,12 @@ class Subnets(BaseNuker):
         _subnets = ec2_client.describe_subnets()['Subnets']
         return [sbn['SubnetId'] for sbn in _subnets]
 
+    def nuke_resources(self):
+        for subnet in self.list_resources():
+            ec2_client.delete_subnet(
+                SubnetId=subnet
+            )
+
 
 class Volumes(BaseNuker):
     def __init__(self):
@@ -196,6 +268,9 @@ class Volumes(BaseNuker):
         _vols = ec2_client.describe_volumes()['Volumes']
         return [vol['VolumeId'] for vol in _vols]
 
+    def nuke_resources(self):
+        [ec2_client.delete_volume(VolumeId=i) for i in self.list_resources()]
+
 
 class VpcEndpointsConnections(BaseNuker):
     def __init__(self):
@@ -206,6 +281,9 @@ class VpcEndpointsConnections(BaseNuker):
         _vepc = ec2_client.describe_vpc_endpoint_connections()['VpcEndpointConnections']
         return [vp['VpcEndpointId'] for vp in _vepc]
 
+    def nuke_resources(self):
+        [ec2_client.delete_vpc_peering_connection(VpcEndpointId=i) for i in self.list_resources()]
+
 
 class VpcEndpoints(BaseNuker):
     def __init__(self):
@@ -215,6 +293,11 @@ class VpcEndpoints(BaseNuker):
     def list_resources(self):
         _vep = ec2_client.describe_vpc_endpoints()['VpcEndpoints']
         return [vp['VpcEndpointId'] for vp in _vep]
+
+    def nuke_resources(self):
+        ec2_client.delete_vpc_endpoints(
+            VpcEndpointIds=self.list_resources()
+        )
 
 
 class Vpcs(BaseNuker):
@@ -237,3 +320,6 @@ class Vpcs(BaseNuker):
     def list_resources(self):
         _vpcs = ec2_client.describe_vpcs()['Vpcs']
         return [vpc['VpcId'] for vpc in _vpcs]
+
+    def nuke_resources(self):
+        [ec2_client.delete_vpc(VpcId=i) for i in self.list_resources()]
