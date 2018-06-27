@@ -226,11 +226,22 @@ class RouteTables(BaseNuker):
         self.name = 'routetables'
 
     def list_resources(self):
+        rts_ids = []
         _rtbls = ec2_client.describe_route_tables()['RouteTables']
-        return [rt['RouteTableId'] for rt in _rtbls]
+        for rt in _rtbls:
+            if not rt['Associations']:
+                rts_ids.append(rt['RouteTableId'])
+                continue
+
+            for association in rt['Associations']:
+                if ('Main' not in association) or (association['Main'] != True):
+                    rts_ids.append(rt['RouteTableId'])
+
+        return rts_ids
 
     def nuke_resources(self):
         for rt in self.list_resources():
+            print(f"deleteing {rt}")
             ec2_client.delete_route_table(
                 RouteTableId=rt
             )
@@ -295,9 +306,38 @@ class VpcEndpoints(BaseNuker):
         return [vp['VpcEndpointId'] for vp in _vep]
 
     def nuke_resources(self):
-        ec2_client.delete_vpc_endpoints(
-            VpcEndpointIds=self.list_resources()
-        )
+        endpoints = self.list_resources()
+        if endpoints:
+            ec2_client.delete_vpc_endpoints(
+                VpcEndpointIds=endpoints
+            )
+
+
+class InternetGateways(BaseNuker):
+    def __init__(self):
+        super(InternetGateways, self).__init__()
+        self.name = 'internetgateways'
+
+    def __list_igws(self):
+        return ec2_client.describe_internet_gateways()['InternetGateways']
+
+    def list_resources(self):
+        return [igw['InternetGatewayId'] for igw in self.__list_igws()]
+
+    def nuke_resources(self):
+        igws = self.__list_igws()
+        for igw in igws:
+            if ('Attachments' in igw):
+                for attachment in igw['Attachments']:
+                    ec2_client.detach_internet_gateway(
+                        InternetGatewayId=igw['InternetGatewayId'],
+                        VpcId=attachment['VpcId']
+                    )
+
+            ec2_client.delete_internet_gateway(
+                InternetGatewayId=igw['InternetGatewayId']
+            )
+
 
 
 class Vpcs(BaseNuker):
@@ -313,7 +353,8 @@ class Vpcs(BaseNuker):
             'dhcpoptions',
             'customergateways',
             'vpngateways',
-            'securitygroups'
+            'securitygroups',
+            'internetgateways'
         ]
         self.name = 'vpcs'
 
