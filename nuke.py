@@ -50,7 +50,9 @@ def list_resources(modules):
         print()
 
 def nuke_resources(modules):
-    [i.nuke_resources() for i in modules]
+    for i in modules:
+        print (f"Destroying {i.name}....")
+        i.nuke_resources()
 
 ops = {
     "list": list_resources,
