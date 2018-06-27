@@ -42,19 +42,36 @@ class SecurityGroups(BaseNuker):
         self.name = 'securitygroups'
         self.dependencies = ['instances']
 
-    def list_resources(self, ids_only = False):
-        _security_groups = ec2_client.describe_security_groups()['SecurityGroups']
-        if not ids_only:
-            return [sg['GroupName'] for sg in _security_groups if sg['GroupName'] != 'default']
+    def __list_sgs(self):
+        return ec2_client.describe_security_groups()['SecurityGroups']
 
-        return [sg['GroupId'] for sg in _security_groups if sg['GroupName'] != 'default']
+    def list_resources(self):
+        if not ids_only:
+            return [sg['GroupName'] for sg in self.__list_sgs() if sg['GroupName'] != 'default']
+
 
     def nuke_resources(self):
-        # TODO resolve SG-to-SG mappings resolution
-        for sg in self.list_resources(ids_only=True):
-            ec2_client.delete_security_group(
-                GroupId=sg
-            )
+        sgs = self.__list_sgs()
+        for sg in sgs:
+            if sg['IpPermissions']:
+                for ipperm in sg['IpPermissions']:
+                    ec2_client.revoke_security_group_ingress(
+                        IpPermissions=[ipperm],
+                        GroupId=sg['GroupId']
+                    )
+
+            if sg['IpPermissionsEgress']:
+                for ipperm in sg['IpPermissionsEgress']:
+                    ec2_client.revoke_security_group_egress(
+                        IpPermissions=[ipperm],
+                        GroupId=sg['GroupId']
+                    )
+        
+        for sg in sgs:
+            if sg['GroupName'] != 'default':
+                ec2_client.delete_security_group(
+                    GroupId=sg['GroupId']
+                )
 
 
 
@@ -142,7 +159,9 @@ class EIPs(BaseNuker):
 class VpnGateways(BaseNuker):
     def __init__(self):
         super(VpnGateways, self).__init__()
+        self.dependencies = ['vpcs']
         self.name = 'vpngateways'
+
 
     def list_resources(self):
         _vgws = ec2_client.describe_vpn_gateways()['VpnGateways']
@@ -171,7 +190,7 @@ class CustomerGateways(BaseNuker):
                 CustomerGatewayId=cgw
             )
 
-
+'''
 class DHCPOptions(BaseNuker):
     def __init__(self):
         super(DHCPOptions, self).__init__()
@@ -186,7 +205,7 @@ class DHCPOptions(BaseNuker):
             ec2_client.delete_dhcp_options(
                 DhcpOptionsId=dhcpops
             )
-
+'''
 
 class KeyPairs(BaseNuker):
     def __init__(self):
@@ -223,6 +242,9 @@ class NatGateways(BaseNuker):
 class RouteTables(BaseNuker):
     def __init__(self):
         super(RouteTables, self).__init__()
+        self.dependencies = [
+            'subnets'
+        ]
         self.name = 'routetables'
 
     def list_resources(self):
@@ -252,7 +274,6 @@ class Subnets(BaseNuker):
         super(Subnets, self).__init__()
         self.dependencies = [
             'instances',
-            'routetables',
             'natgateways',
             'vpcendpointsconnections'
         ]
@@ -350,9 +371,7 @@ class Vpcs(BaseNuker):
             'vpcendpointsconnections',
             'vpcendpoints',
             'routetables',
-            'dhcpoptions',
             'customergateways',
-            'vpngateways',
             'securitygroups',
             'internetgateways'
         ]
