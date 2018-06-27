@@ -25,8 +25,8 @@ class Instances(BaseNuker):
         _reservations = ec2_client.describe_instances()['Reservations']
         if not ids_only:
             return [get_instance_name(i) for instances in _reservations for i in instances['Instances']]
-        else:
-            return [i['InstanceId'] for instances in _reservations for i in instances['Instances']]
+
+        return [i['InstanceId'] for instances in _reservations for i in instances['Instances']]
 
     def nuke_resources(self):
         instance_ids = self.list_resources(ids_only=True)
@@ -42,9 +42,20 @@ class SecurityGroups(BaseNuker):
         self.name = 'securitygroups'
         self.dependencies = ['instances']
 
-    def list_resources(self):
+    def list_resources(self, ids_only = False):
         _security_groups = ec2_client.describe_security_groups()['SecurityGroups']
-        return [sg['GroupName'] for sg in _security_groups if sg['GroupName'] != 'default']
+        if not ids_only:
+            return [sg['GroupName'] for sg in _security_groups if sg['GroupName'] != 'default']
+
+        return [sg['GroupId'] for sg in _security_groups if sg['GroupName'] != 'default']
+
+    def nuke_resources(self):
+        # TODO resolve SG-to-SG mappings resolution
+        for sg in self.list_resources(ids_only=True):
+            ec2_client.delete_security_group(
+                GroupId=sg
+            )
+
 
 
 class AMIs(BaseNuker):
