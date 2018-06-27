@@ -88,6 +88,16 @@ class EIPs(BaseNuker):
         return [addr['PublicIp'] for addr in _addresses]
 
 
+class VpnGateways(BaseNuker):
+    def __init__(self):
+        super(VpnGateways, self).__init__()
+        self.name = 'vpngateways'
+
+    def list_resources(self):
+        _vgws = ec2_client.describe_vpn_gateways()['VpnGateways']
+        return [vgw['VpnGatewayId'] for vgw in _vgws]
+
+
 class CustomerGateways(BaseNuker):
     def __init__(self):
         super(CustomerGateways, self).__init__()
@@ -137,3 +147,72 @@ class RouteTables(BaseNuker):
     def list_resources(self):
         _rtbls = ec2_client.describe_route_tables()['RouteTables']
         return [rt['RouteTableId'] for rt in _rtbls]
+
+
+class Subnets(BaseNuker):
+    def __init__(self):
+        super(Subnets, self).__init__()
+        self.dependencies = [
+            'instances',
+            'routetables',
+            'natgateways',
+            'vpcendpointsconnections'
+        ]
+        self.name = 'subnets'
+
+    def list_resources(self):
+        _subnets = ec2_client.describe_subnets()['Subnets']
+        return [sbn['SubnetId'] for sbn in _subnets]
+
+
+class Volumes(BaseNuker):
+    def __init__(self):
+        super(Volumes, self).__init__()
+        self.dependencies = ['instances']
+        self.name = 'volumes'
+
+    def list_resources(self):
+        _vols = ec2_client.describe_volumes()['Volumes']
+        return [vol['VolumeId'] for vol in _vols]
+
+
+class VpcEndpointsConnections(BaseNuker):
+    def __init__(self):
+        super(VpcEndpointsConnections, self).__init__()
+        self.name = 'vpcendpointconnections'
+
+    def list_resources(self):
+        _vepc = ec2_client.describe_vpc_endpoint_connections()['VpcEndpointConnections']
+        return [vp['VpcEndpointId'] for vp in _vepc]
+
+
+class VpcEndpoints(BaseNuker):
+    def __init__(self):
+        super(VpcEndpoints, self).__init__()
+        self.name = 'vpcendpoints'
+
+    def list_resources(self):
+        _vep = ec2_client.describe_vpc_endpoints()['VpcEndpoints']
+        return [vp['VpcEndpointId'] for vp in _vep]
+
+
+class Vpcs(BaseNuker):
+    def __init__(self):
+        super(Vpcs, self).__init__()
+        self.dependencies = [
+            'instances',
+            'routetables',
+            'natgateways',
+            'vpcendpointsconnections',
+            'vpcendpoints',
+            'routetables',
+            'dhcpoptions',
+            'customergateways',
+            'vpngateways',
+            'securitygroups'
+        ]
+        self.name = 'vpcs'
+
+    def list_resources(self):
+        _vpcs = ec2_client.describe_vpcs()['Vpcs']
+        return [vpc['VpcId'] for vpc in _vpcs]
