@@ -21,9 +21,19 @@ class Instances(BaseNuker):
         super(Instances, self).__init__()
         self.name = 'instances'
 
-    def list_resources(self):
+    def list_resources(self, ids_only = False):
         _reservations = ec2_client.describe_instances()['Reservations']
-        return [get_instance_name(i) for instances in _reservations for i in instances['Instances']]
+        if not ids_only:
+            return [get_instance_name(i) for instances in _reservations for i in instances['Instances']]
+        else:
+            return [i['InstanceId'] for instances in _reservations for i in instances['Instances']]
+
+    def nuke_resources(self):
+        instance_ids = self.list_resources(ids_only=True)
+        id_lists = [instance_ids[i:i+10] for i in range(0, len(instance_ids), 10)]
+        for id_list in id_lists:
+            ec2_client.terminate_instances(InstanceIds=id_list)
+
 
 
 class SecurityGroups(BaseNuker):

@@ -50,7 +50,7 @@ def list_resources(modules):
         print()
 
 def nuke_resources(modules):
-    [i.nuke() for i in modules]
+    [i.nuke_resources() for i in modules]
 
 ops = {
     "list": list_resources,

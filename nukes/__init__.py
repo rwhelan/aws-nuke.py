@@ -7,7 +7,7 @@ class BaseNuker:
         self.dependencies = []
         self.name = ''
 
-    def nuke(self):
+    def nuke_resources(self):
         raise NotImplementedError
 
     def list_resources(self):
