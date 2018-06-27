@@ -159,16 +159,26 @@ class EIPs(BaseNuker):
 class VpnGateways(BaseNuker):
     def __init__(self):
         super(VpnGateways, self).__init__()
-        self.dependencies = ['vpcs']
         self.name = 'vpngateways'
 
+    def __list_vgws(self):
+        return ec2_client.describe_vpn_gateways()['VpnGateways']
 
     def list_resources(self):
-        _vgws = ec2_client.describe_vpn_gateways()['VpnGateways']
-        return [vgw['VpnGatewayId'] for vgw in _vgws]
+        return [vgw['VpnGatewayId'] for vgw in self.__list_vgws()]
 
     def nuke_resources(self):
-        for vgw in self.list_resources():
+        vgws = self.__list_vgws()
+        for vgw in vgws:
+            if vgw['State'] in ('deleted', 'deleting'): continue
+
+            if 'VpcAttachments' in vgw:
+                for attachment in vgw['VpcAttachments']:
+                    ec2_client.detach_vpn_gateway(
+                        VpcId=attachment['VpcId'],
+                        VpnGatewayId=vgw['VpnGatewayId']
+                    )
+
             ec2_client.delete_vpn_gateway(
                 VpnGatewayId=vgw
             )
@@ -373,7 +383,8 @@ class Vpcs(BaseNuker):
             'routetables',
             'customergateways',
             'securitygroups',
-            'internetgateways'
+            'internetgateways',
+            'vpngateways'
         ]
         self.name = 'vpcs'
 
