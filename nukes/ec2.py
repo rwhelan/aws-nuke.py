@@ -46,8 +46,7 @@ class SecurityGroups(BaseNuker):
         return ec2_client.describe_security_groups()['SecurityGroups']
 
     def list_resources(self):
-        if not ids_only:
-            return [sg['GroupName'] for sg in self.__list_sgs() if sg['GroupName'] != 'default']
+        return [sg['GroupName'] for sg in self.__list_sgs() if sg['GroupName'] != 'default']
 
 
     def nuke_resources(self):
@@ -180,7 +179,7 @@ class VpnGateways(BaseNuker):
                     )
 
             ec2_client.delete_vpn_gateway(
-                VpnGatewayId=vgw
+                VpnGatewayId=vgw['VpnGatewayId']
             )
 
 
@@ -200,10 +199,11 @@ class CustomerGateways(BaseNuker):
                 CustomerGatewayId=cgw
             )
 
-'''
+
 class DHCPOptions(BaseNuker):
     def __init__(self):
         super(DHCPOptions, self).__init__()
+        self.dependencies = ['vpcs']
         self.name = 'dhcpoptions'
 
     def list_resources(self):
@@ -215,7 +215,7 @@ class DHCPOptions(BaseNuker):
             ec2_client.delete_dhcp_options(
                 DhcpOptionsId=dhcpops
             )
-'''
+
 
 class KeyPairs(BaseNuker):
     def __init__(self):
@@ -273,7 +273,6 @@ class RouteTables(BaseNuker):
 
     def nuke_resources(self):
         for rt in self.list_resources():
-            print(f"deleteing {rt}")
             ec2_client.delete_route_table(
                 RouteTableId=rt
             )
