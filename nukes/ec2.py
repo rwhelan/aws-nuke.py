@@ -42,7 +42,10 @@ class SecurityGroups(BaseNuker):
     def __init__(self):
         super(SecurityGroups, self).__init__()
         self.name = 'securitygroups'
-        self.dependencies = ['instances']
+        self.dependencies = [
+            'instances',
+            'efs'
+        ]
 
     def __list_sgs(self):
         return ec2_client.describe_security_groups()['SecurityGroups']
@@ -255,9 +258,10 @@ class NatGateways(BaseNuker):
     def nuke_resources(self):
         ngws = [i for i in self.__list_ngws() if i['State'] in ('pending', 'available', 'deleting')]
 
-        self.__delete_ngws(
-            [i['NatGatewayId'] for i in ngws]
-        )
+        if ngws:
+            self.__delete_ngws(
+                [i['NatGatewayId'] for i in ngws]
+            )
 
 
 class RouteTables(BaseNuker):
@@ -294,7 +298,8 @@ class NetworkInterfaces(BaseNuker):
         super(NetworkInterfaces, self).__init__()
         self.dependencies = [
             'instances',
-            'natgateways'
+            'natgateways',
+            'efs'
         ]
         self.name = 'networkinterfaces'
 
