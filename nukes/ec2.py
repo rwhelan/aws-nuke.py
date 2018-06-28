@@ -1,5 +1,8 @@
 
+import time 
+
 import boto3
+from botocore.exceptions import ClientError
 
 from lib import sts
 from nukes import BaseNuker
@@ -35,12 +38,14 @@ class Instances(BaseNuker):
             ec2_client.terminate_instances(InstanceIds=id_list)
 
 
-
 class SecurityGroups(BaseNuker):
     def __init__(self):
         super(SecurityGroups, self).__init__()
         self.name = 'securitygroups'
-        self.dependencies = ['instances']
+        self.dependencies = [
+            'instances',
+            'efs'
+        ]
 
     def __list_sgs(self):
         return ec2_client.describe_security_groups()['SecurityGroups']
@@ -73,7 +78,6 @@ class SecurityGroups(BaseNuker):
                 )
 
 
-
 class AMIs(BaseNuker):
     #enabled = False
     def __init__(self):
@@ -102,9 +106,6 @@ class AMIs(BaseNuker):
             ec2_client.deregister_image(
                 ImageId=image
             )
-
-
-
 
 
 class SnapShots(BaseNuker):
@@ -238,14 +239,28 @@ class NatGateways(BaseNuker):
         super(NatGateways, self).__init__()
         self.name = 'natgateways'
 
+    def __list_ngws(self):
+        return ec2_client.describe_nat_gateways()['NatGateways']
+
+    def __delete_ngws(self, ids):
+        [ec2_client.delete_nat_gateway(NatGatewayId=i) for i in ids]
+
+        while True:
+            time.sleep(10.0)
+
+            ngws = self.__list_ngws()
+            if all(map(lambda x: x in ('deleted', 'failed'), [i['State'] for i in ngws])):
+                return
+
     def list_resources(self):
-        _ngws = ec2_client.describe_nat_gateways()['NatGateways']
-        return [ngw['NatGatewayId'] for ngw in _ngws]
+        return [ngw['NatGatewayId'] for ngw in self.__list_ngws()]
 
     def nuke_resources(self):
-        for ngw in self.list_resources():
-            ec2_client.delete_nat_gateway(
-                NatGatewayId=ngw
+        ngws = [i for i in self.__list_ngws() if i['State'] in ('pending', 'available', 'deleting')]
+
+        if ngws:
+            self.__delete_ngws(
+                [i['NatGatewayId'] for i in ngws]
             )
 
 
@@ -278,10 +293,35 @@ class RouteTables(BaseNuker):
             )
 
 
+class NetworkInterfaces(BaseNuker):
+    def __init__(self):
+        super(NetworkInterfaces, self).__init__()
+        self.dependencies = [
+            'instances',
+            'natgateways',
+            'efs'
+        ]
+        self.name = 'networkinterfaces'
+
+    def __list_netifaces(self):
+        return ec2_client.describe_network_interfaces()['NetworkInterfaces']
+
+    def list_resources(self):
+        return [i['NetworkInterfaceId'] for i in self.__list_netifaces()]
+
+    def nuke_resources(self):
+        for iface in self.list_resources():
+            try:
+                ec2_client.delete_network_interface(NetworkInterfaceId=iface)
+            except ClientError as e:
+                if e.response['Error']['Code'] == "InvalidNetworkInterfaceID.NotFound": pass
+
+
 class Subnets(BaseNuker):
     def __init__(self):
         super(Subnets, self).__init__()
         self.dependencies = [
+            'networkinterfaces',
             'instances',
             'natgateways',
             'vpcendpointsconnections'
@@ -346,6 +386,10 @@ class VpcEndpoints(BaseNuker):
 class InternetGateways(BaseNuker):
     def __init__(self):
         super(InternetGateways, self).__init__()
+        self.dependencies = [
+            'natgateways',
+            'eips'
+        ]
         self.name = 'internetgateways'
 
     def __list_igws(self):
